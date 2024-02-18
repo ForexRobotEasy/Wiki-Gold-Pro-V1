@@ -1,0 +1,117 @@
+mql5
+// Developer: Forex Robot Easy Team
+// Developer's site: forexroboteasy.com
+// Program name: Wiki Gold Pro V1
+
+// Include necessary libraries
+#include <Trade\Trade.mqh>
+
+// Define constants
+const int GOLD_MAGIC_NUMBER = 123456;
+const double MAX_LOSS_PERCENT = 0.01; // Maximum loss percentage allowed
+
+// Define global variables
+CTrade trade; // Trade object to execute orders
+int stopLoss = 100; // Stop Loss level in points
+int takeProfit = 200; // Take Profit level in points
+
+// Custom function to calculate lot size based on user-defined parameters
+double CalculateLotSize(double accountBalance, double riskPercentage, double stopLossPoints) {
+    double lotSize = (accountBalance * riskPercentage) / (stopLossPoints * MarketInfo(Symbol(), MODE_TICKVALUE));
+    return NormalizeDouble(lotSize, 2);
+}
+
+// Custom function to check if there are any open positions
+bool HasOpenPositions() {
+    return trade.PositionsTotal() > 0;
+}
+
+// Custom function to close all open positions
+void CloseAllPositions() {
+    for (int i = trade.PositionsTotal() - 1; i >= 0; i--) {
+        trade.PositionSelectByIndex(i);
+        trade.PositionClose(trade.PositionGetInteger(POSITION_TICKET));
+    }
+}
+
+// Custom function to handle trade execution
+void ExecuteTrade(double lotSize, ENUM_ORDER_TYPE orderType) {
+    trade.SetDeviationInPoints(10);
+    trade.SetMagicNumber(GOLD_MAGIC_NUMBER);
+    trade.SetTypeFilling(ORDER_FILLING_FOK);
+    
+    if (orderType == ORDER_TYPE_BUY) {
+        trade.Buy(lotSize);
+        trade.SetStopLoss(stopLoss);
+        trade.SetTakeProfit(takeProfit);
+    } else if (orderType == ORDER_TYPE_SELL) {
+        trade.Sell(lotSize);
+        trade.SetStopLoss(stopLoss);
+        trade.SetTakeProfit(takeProfit);
+    }
+}
+
+// Custom function to handle trading logic
+void TradeLogic() {
+    double accountBalance = AccountBalance();
+    double riskPercentage = accountBalance * MAX_LOSS_PERCENT;
+    
+    double lotSize = CalculateLotSize(accountBalance, riskPercentage, stopLoss);
+    
+    if (HasOpenPositions()) {
+        // Close all open positions
+        CloseAllPositions();
+    } else {
+        // Check for potential trading opportunities
+        if (// Put your trading conditions here) {
+            // Execute buy order
+            ExecuteTrade(lotSize, ORDER_TYPE_BUY);
+        } else if (// Put your trading conditions here) {
+            // Execute sell order
+            ExecuteTrade(lotSize, ORDER_TYPE_SELL);
+        }
+    }
+}
+
+// Custom function to handle trade exit strategies
+void ExitStrategy() {
+    for (int i = trade.PositionsTotal() - 1; i >= 0; i--) {
+        trade.PositionSelectByIndex(i);
+        
+        // Check if stop loss or take profit level is reached
+        if (trade.PositionGetDouble(POSITION_SL) != stopLoss || trade.PositionGetDouble(POSITION_TP) != takeProfit) {
+            // Set trailing stop
+            trade.PositionModify(trade.PositionGetDouble(POSITION_SL), trade.PositionGetDouble(POSITION_TP), stopLoss, takeProfit);
+        }
+        
+        // Check if time-based exit strategy is reached
+        if (// Put your time-based exit strategy conditions here) {
+            trade.PositionClose(trade.PositionGetInteger(POSITION_TICKET));
+        }
+    }
+}
+
+// Custom function to handle errors and exceptions during trading operations
+void HandleErrors() {
+    if (trade.ResultRetcode() != TRADE_RETCODE_DONE) {
+        // Handle error or exception
+    }
+}
+
+// Custom function to handle program execution
+void OnTick() {
+    TradeLogic();
+    ExitStrategy();
+    HandleErrors();
+}
+
+// Custom function to initialize the trading robot
+void OnInit() {
+    trade.SetExpertMagicNumber(GOLD_MAGIC_NUMBER);
+}
+
+// Custom function to deinitialize the trading robot
+void OnDeinit(const int reason) {
+    CloseAllPositions();
+}
+
